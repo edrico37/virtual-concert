@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Basic Page Needs -->
+	<meta charset="utf-8">
+	<title>Virtual Concert</title>
+	<meta name="description" content="Turn off the lights and crank up the speakers!">
+	<meta name="author" content="Dylan Hughes">
+
+    <!-- CSS -->
+    <style type="text/css">
+        body {
+            background-color: black;
+        }
+        
+        #player {
+            height: 900px;
+            width: 1600px;
+        }
+    </style>
+
+    <!-- JavaScript -->
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.2.min.js"></script> <!-- don't hotlink -->
+    <script type="text/javascript" src="./javascript/swfobject.js"></script> <!-- don't hotlink -->
+    <script type="text/javascript">
+        // "globals"
+        var videoPlayer;
+        var playlist = [];
+
+        $(document).ready(function() {
+            // form submit handler
+            $('#choose-artist').on('submit', function(event) {
+                event.preventDefault();
+                var artist = $(this).children('input[name=\'artist\']').val();
+                buildPlaylist(artist);
+            });
+
+            // *** TESTING ONLY ***
+            $('#playlist').on('click', 'a.play-link', function(event) {
+                playVideo($(this).attr('href'));    
+                return false;
+            });
+        });
+
+        function embedPlayer() {
+            var swfUrl = "http://www.youtube.com/apiplayer?enablejsapi=1&version=3";
+            var params = {
+                allowScriptAccess: "always"
+            };
+            var attributes = {
+                id: "video-player"    
+            };
+            swfobject.embedSWF(swfUrl, 'video-player', '1600', '900', '10.1', null, null, params, attributes, null);
+
+        }
+
+        function onYouTubePlayerReady(playerId) {
+            videoPlayer = document.getElementById('video-player');
+            // add event listeners
+            videoPlayer.addEventListener('onStateChange', 'onVideoPlayerStateChange');
+            videoPlayer.cuePlaylist(playlist);
+        }
+
+        function onVideoPlayerStateChange(newState) {
+            if (newState === 5) {
+                // video is cued
+                videoPlayer.setShuffle(true);
+                startConcert(); // let's begin!
+            }
+        }
+
+        function startConcert(videoId) {
+            $('#choose-artist').hide();
+            videoPlayer.playVideo();    
+        }
+
+        function buildPlaylist(artist) {
+            var apiUrl = $('#choose-artist').attr('action');
+            var settings = {
+                "q": artist + " Live",
+                "max-results": 20,
+                "hd": true,
+                "duration": "medium",
+                "alt": "json",
+                "v": 2
+            };
+            $.getJSON(apiUrl, settings, function(data) {
+                var videos = data.feed.entry;
+                if (videos) {
+                    var videoId;
+                    $('#playlist').empty();
+                    for (i in videos) {
+                        // build the playlist
+                        console.log(videos[i]);
+                        videoId = videos[i].media$group.yt$videoid.$t;
+                        playlist.push(videoId); 
+                        // embed the player
+                        embedPlayer();
+                    }
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <form id="choose-artist" action="http://gdata.youtube.com/feeds/api/videos" method="GET">
+        <input name="artist" type="text" value="Deadmau5"></input>
+        <input type="submit" value="Let's Rock!"></input>
+    </form>
+    <ul id="playlist">
+    </ul>
+    <div id="video-player">
+        <p>Sorry, we couldn't embed YouTube's chromeless player.</p>
+    </div>
+</body>
+</html>
